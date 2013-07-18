@@ -1,11 +1,12 @@
 #!/usr/bin/env python2.7
 
 """vls:  list the contents of a voSpace"""
-from vos import vos
+import vos
 import optparse
 import logging
 import os, sys
-from vos import vos, __version__
+from vos import __version__
+from vos.settings import CADC_GMS_PREFIX
 
 usage = """
   vls vos:voSpaceTarget
@@ -98,11 +99,6 @@ if len(args) < 1  :
 
 logging.debug("Connecting to vospace using certificate %s" % (opt.certfile))
 
-try:
-    client = vos.Client(certFile=opt.certfile)
-except Exception as e:
-    logging.error("Connection failed:  %s" % (str(e)))
-    sys.exit(-1)
 
 def sizeFormat(size):
     """Format a size value for listing"""
@@ -134,8 +130,8 @@ columns.extend(['readGroup', 'writeGroup', 'isLocked', 'size', 'date'])
 
 formats = {'permisions': lambda value: "%-11s" % (value),
          'creator': lambda value: " %-20s" % (value),
-         'readGroup': lambda value: " %-15s" % ("'" + value.replace(vos.CADC_GMS_PREFIX, "") + "'"),
-         'writeGroup': lambda value: " %-15s" % ("'" + value.replace(vos.CADC_GMS_PREFIX, "") + "'"),
+         'readGroup': lambda value: " %-15s" % ("'" + value.replace(CADC_GMS_PREFIX, "") + "'"),
+         'writeGroup': lambda value: " %-15s" % ("'" + value.replace(CADC_GMS_PREFIX, "") + "'"),
 	 'isLocked': lambda value: " %-8s" % ("", "LOCKED")[value=="true"],
          'size': sizeFormat,
          'date': dateFormat}
@@ -146,12 +142,17 @@ for node in args:
         parser.error("Improper vospace specification: %s " % (node))
     try:
         logging.debug("getting listing of: %s" % ( str(node)))
+        client = vos.Client(certFile=opt.certfile)
         infoList = client.getInfoList(node)
     except IOError as e:
         logging.error("Error getting listing of %s ( %s )" % (node, e.strerror))
+	if opt.debug :
+            raise e
         sys.exit(e.errno)
     except Exception as e:
         logging.error("Error getting listing of %s ( %s )" % (node, str(e)))
+	if opt.debug :
+            raise e
         sys.exit(-1)
 
     if sortKey:
