@@ -56,6 +56,7 @@ class Cantop(object):
    def get_status(self):
 
       self.get_proc_table()
+      table = self.table
 
       resp = "%s \n" % ( str(datetime.now())[0:19] ) 
 
