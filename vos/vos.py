@@ -193,7 +193,7 @@ class Node:
             self.target = self.node.findtext(Node.TARGET)
 
         self.uri = self.node.get('uri')
-        self.name = os.path.basename(self.uri)
+        self.name = self.uri.split('/')[-1]
         for propertiesNode in self.node.findall(Node.PROPERTIES):
             self.setProps(propertiesNode)
         self.isPublic = False
@@ -280,7 +280,8 @@ class Node:
         self.attr['st_mode'] = attr.get('st_mode', st_mode)
 
         ## We set the owner and group bits to be those of the currently running process.  
-        ## This is a hack since we don't have an easy way to figure these out.  TBD!
+        ## This is a hack since we don't have an easy way to figure these out.
+        # TODO make these gid values more useful?
         self.attr['st_uid'] = attr.get('st_uid', os.getuid())
         self.attr['st_gid'] = attr.get('st_uid', os.getgid())
         self.attr['st_size'] = attr.get('st_size', int(node.props.get('length', 0)))
@@ -623,7 +624,7 @@ class VOFile:
         self.maxRetries = 10000
         self.maxRetryTime = MAX_RETRY_TIME
         self.followRedirect = followRedirect
-        self.name = os.path.basename(URL)
+        self.name = URL
         self._fpos = 0
         self.open(URL, method)
         # initial values for retry parameters
@@ -632,6 +633,16 @@ class VOFile:
         self.retries = 0
 
 	#logging.debug("Sending back VOFile object for file of size %s" % (str(self.size)))
+
+    @property
+    def name(self):
+        """The name of the node"""
+        return self._name
+
+    @name.setter
+    def name(self, URL):
+        path = urlparse(URL).path
+        self._name = path.split('/')[-1]
 
     def tell(self):
         return self._fpos
@@ -728,7 +739,7 @@ class VOFile:
         if method in ["PUT", "POST", "DELETE"]:
             contentType = "text/xml"
             if method == "PUT":
-                ext = os.path.splitext(urllib.splitquery(URL)[0])[1]
+                ext = urllib.splitquery(URL)[0].split('.')[-1]
                 #logging.debug("Got extension %s" % (ext))
                 if ext in [ '.fz', '.fits', 'fit']:
                     contentType = 'application/fits'
@@ -967,7 +978,7 @@ class Client:
 
         # Check for 'cutout' syntax values.
         path = re.match("(?P<fname>[^\[]*)(?P<ext>(\[\d*\:?\d*\])?(\[\d*\:?\d*,?\d*\:?\d*\])?)",parts.path)
-        filename = os.path.basename(path.group('fname'))
+        filename = path.group('fname').split('/')[-1]
         if not re.match("^[\_\-\(\)\=\+\!\,\;\:\@\&\*\$\.\w\~]*$", filename):
             raise IOError(errno.EINVAL, "Illegal vospace container name", filename)
         path = path.group('fname')
@@ -975,7 +986,12 @@ class Client:
         host = parts.netloc
         if not host or host == '':
             host = self.VOSpaceServer
-        path = os.path.normpath(path).strip('/')
+        newpath = ""
+        sep = ""
+        for part in path.split('/'):
+            if len(part) > 0:
+                newpath += sep+part
+                sep = '/'
         return "%s://%s/%s" % (parts.scheme, host, path)
 
 
@@ -1111,7 +1127,7 @@ class Client:
     def link(self, srcURI, linkURI):
         """Make linkURI point to srcURI"""
         if (self.isdir(linkURI)) :
-            linkURI = os.path.join(linkURI, os.path.basename(srcURI))
+            linkURI += '/'+srcURI.split('/')[-1]
         linkNode = Node(self.fixURI(linkURI), nodeType="vos:LinkNode")
         ET.SubElement(linkNode.node, "target").text = self.fixURI(srcURI)
         URL = self.getNodeURL(linkURI)
