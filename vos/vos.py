@@ -1041,7 +1041,7 @@ class Client:
             return self._put(uri)
 
         parts = urlparse(uri)
-        path = parts.path.strip('/')
+        # path = parts.path.strip('/')
         server = Client.VOServers.get(parts.netloc,None)
 
         if server is None:
